@@ -1,48 +1,31 @@
 defmodule ReportsGenerator do
   alias ReportsGenerator.ReportBuilder
+  alias ReportsGenerator.Parser
+
+  def build(filename) when not is_bitstring(filename), do: {:error, "Please provide a file name"}
 
   def build(filename) do
     filename
-    |> parse_file()
-    |> Enum.map(&parse_line/1)
+    |> Parser.parse_file()
     |> Enum.reduce(report_acc(), &ReportBuilder.build_report/2)
   end
 
-  defp parse_file(filename) do
-    "reports/#{filename}"
-    |> File.stream!()
+  def build_from_many(filenames) when not is_list(filenames) do
+    {:error, "Please provide a list of file names"}
   end
 
-  defp parse_line(line) do
-    line
-    |> String.split(",")
-    |> Enum.map(&String.trim/1)
-    |> format_line_to_map()
-  end
+  def build_from_many(filenames) do
+    result =
+      filenames
+      |> Task.async_stream(&build/1)
+      |> Enum.reduce(report_acc(), fn {:ok, result}, report ->
+        ReportBuilder.merge_reports(report, result)
+      end)
 
-  defp format_line_to_map([name, hours, _day, month, year]) do
-    %{
-      "name" => name,
-      "hours" => String.to_integer(hours),
-      "month" => month_name(month),
-      "year" => year
-    }
+    {:ok, result}
   end
 
   defp report_acc() do
     %{"all_hours" => %{}, "hours_per_month" => %{}, "hours_per_year" => %{}}
   end
-
-  defp month_name("1"), do: "janeiro"
-  defp month_name("2"), do: "fevereiro"
-  defp month_name("3"), do: "março"
-  defp month_name("4"), do: "abril"
-  defp month_name("5"), do: "maio"
-  defp month_name("6"), do: "junho"
-  defp month_name("7"), do: "julho"
-  defp month_name("8"), do: "agosto"
-  defp month_name("9"), do: "setembro"
-  defp month_name("10"), do: "outubro"
-  defp month_name("11"), do: "novembro"
-  defp month_name("12"), do: "dezembro"
 end

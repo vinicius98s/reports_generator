@@ -1,4 +1,39 @@
 defmodule ReportsGenerator.ReportBuilder do
+  def merge_reports(
+        %{
+          "all_hours" => all_hours1,
+          "hours_per_month" => hours_per_month1,
+          "hours_per_year" => hours_per_year1
+        },
+        %{
+          "all_hours" => all_hours2,
+          "hours_per_month" => hours_per_month2,
+          "hours_per_year" => hours_per_year2
+        }
+      ) do
+    all_hours = sum_map_values(all_hours1, all_hours2)
+
+    hours_per_month =
+      Map.merge(hours_per_month1, hours_per_month2, fn _key, map1, map2 ->
+        sum_map_values(map1, map2)
+      end)
+
+    hours_per_year =
+      Map.merge(hours_per_year1, hours_per_year2, fn _key, map1, map2 ->
+        sum_map_values(map1, map2)
+      end)
+
+    %{
+      "all_hours" => all_hours,
+      "hours_per_month" => hours_per_month,
+      "hours_per_year" => hours_per_year
+    }
+  end
+
+  defp sum_map_values(map1, map2) do
+    Map.merge(map1, map2, fn _key, value1, value2 -> value1 + value2 end)
+  end
+
   def build_report(hour_report, report) do
     {updated_report, _hour_report} =
       {report, hour_report}
